@@ -1,0 +1,34 @@
+---
+title: "Project 2"
+author: "Group 16"
+date: "2022/3/8"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: yes
+    keep_tex: true
+  html_document:
+    df_print: paged
+fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment = NA, message = FALSE, warning = FALSE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+library(GGally)
+library(olsrr)
+library(kableExtra)
+library(moderndive)
+library(lme4)
+
+```
+
+```{r load data}
+data <- read.csv("dataset16.csv",encoding = "iso-8859-1")
+```
+
