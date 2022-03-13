@@ -1,0 +1,93 @@
+---
+title: "Project 2"
+author: "Group 16"
+date: "2022/3/8"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    number_sections: yes
+    keep_tex: true
+  html_document:
+    df_print: paged
+fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment = NA, message = FALSE, warning = FALSE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+library(GGally)
+library(olsrr)
+library(kableExtra)
+library(moderndive)
+library(lme4)
+library(tidyverse)
+library(moderndive)
+library(gapminder)
+library(sjPlot)
+library(stats)
+library(jtools)
+```
+
+```{r load data}
+data <- read.csv("dataset16.csv",encoding = "UTF-8")
+```
+
+```{r data summary and drop NAs}
+skim(data)
+#price column have NAs with complete_rate 0.923, so we can simply drop rows with NAs.
+data_without_NAs <- data %>% 
+  drop_na() %>% 
+  mutate(above90 = ifelse(points > 90, 1, 0))
+skim(data_without_NAs)
+```
+
+```{r visual summary for numeric}
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(y = points)) +
+#   geom_boxplot()
+# 
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(y = price)) +
+#   geom_boxplot()
+#Many outliers
+
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(x = country, y = points)) +
+#   geom_boxplot()
+# 
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(x = country, y = price)) +
+#   geom_boxplot()
+
+data_without_NAs %>% 
+  ggplot(mapping = aes(x = above90, y = price, group = above90)) +
+  geom_boxplot()
+
+
+
+```
+
+```{r }
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
