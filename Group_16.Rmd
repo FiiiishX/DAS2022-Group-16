@@ -25,10 +25,69 @@ library(olsrr)
 library(kableExtra)
 library(moderndive)
 library(lme4)
-
+library(tidyverse)
+library(moderndive)
+library(gapminder)
+library(sjPlot)
+library(stats)
+library(jtools)
 ```
 
 ```{r load data}
-data <- read.csv("dataset16.csv",encoding = "iso-8859-1")
+data <- read.csv("dataset16.csv",encoding = "UTF-8")
 ```
+
+```{r data summary and drop NAs}
+skim(data)
+#price column have NAs with complete_rate 0.923, so we can simply drop rows with NAs.
+data_without_NAs <- data %>% 
+  drop_na() %>% 
+  mutate(above90 = ifelse(points > 90, 1, 0))
+skim(data_without_NAs)
+```
+
+```{r visual summary for numeric}
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(y = points)) +
+#   geom_boxplot()
+# 
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(y = price)) +
+#   geom_boxplot()
+#Many outliers
+
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(x = country, y = points)) +
+#   geom_boxplot()
+# 
+# data_without_NAs %>% 
+#   ggplot(mapping = aes(x = country, y = price)) +
+#   geom_boxplot()
+
+data_without_NAs %>% 
+  ggplot(mapping = aes(x = above90, y = price, group = above90)) +
+  geom_boxplot()
+
+
+
+```
+
+```{r }
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
