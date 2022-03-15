@@ -110,6 +110,15 @@ labs(x = "Points", y = "Proportion")
 
 ```
 
+```{r country points graph 2}
+# this plot might be easier to view than the plot in the chunk above
+ggplot(data_without_NAs, aes(x = country, fill = above90)) +
+    geom_bar(position = "fill") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90)) +
+    labs(x = "Points", y = "Proportion")
+```
+
 
 
 
