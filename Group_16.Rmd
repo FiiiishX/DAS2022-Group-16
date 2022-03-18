@@ -31,7 +31,6 @@ library(gapminder)
 library(sjPlot)
 library(stats)
 library(jtools)
-library(janitor)
 ```
 
 ```{r load data}
@@ -73,54 +72,9 @@ data_without_NAs %>%
 
 ```
 
-```{r catigrical data}
-data_without_NAs=tidyr::unite(data_without_NAs,'country_p',country,province,remove = FALSE)
-data_without_NAs$country <- as.factor(data_without_NAs$country)
-data_without_NAs$above90<-as.factor(data_without_NAs$above90)
-levels(data_without_NAs$above90) <- c("Low", "High")
-data_without_NAs$title <- as.factor(data_without_NAs$title)
-data_without_NAs$variety<-as.factor(data_without_NAs$variety)
-data_without_NAs$winery<-as.factor(data_without_NAs$winery)
-data_without_NAs$country_p<-as.factor(data_without_NAs$country_p)
-data_without_NAs$province<-as.factor(data_without_NAs$province)
-```
-
-```{r boxplot for country}
-ggplot(data = data_without_NAs, aes(x = above90, y = price, fill = above90)) +
-geom_boxplot() +
-labs(x = "Points", y = "Price") +
-theme(legend.position = "none")
-```
-
-
-```{r country points stats}
-data_without_NAs %>%
-tabyl(country, above90) %>%
-adorn_percentages() %>%
-adorn_pct_formatting() %>%
-adorn_ns() # To show original counts
-```
-
-
-
-```{r country points graph}
-ggplot(data = data_without_NAs, aes(x = above90, group = country)) +
-geom_bar(aes(y = ..prop.., fill = country), stat = "count", position = "dodge") +
-labs(x = "Points", y = "Proportion")
+```{r }
 
 ```
-
-```{r country points graph 2}
-# this plot might be easier to view than the plot in the chunk above
-ggplot(data_without_NAs, aes(x = country, fill = above90)) +
-    geom_bar(position = "fill") +
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = 90)) +
-    labs(x = "Points", y = "Proportion")
-```
-
-
-
 
 
 
