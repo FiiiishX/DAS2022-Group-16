@@ -233,5 +233,9 @@ data_without_NAs %>%
   summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
 ```
 
+```{r}
+data_location %>% 
+  
+```
 
 
