@@ -31,10 +31,12 @@ library(gapminder)
 library(sjPlot)
 library(stats)
 library(jtools)
+library(janitor)
 ```
 
 ```{r load data}
-data <- read.csv("dataset16.csv",encoding = "UTF-8")
+#data <- read.csv("dataset16.csv")
+data<-load("2000data.RData")
 ```
 
 ```{r data summary and drop NAs}
@@ -72,22 +74,245 @@ data_without_NAs %>%
 
 ```
 
-```{r }
+
+```{r catigrical data}
+data_without_NAs=tidyr::unite(data_without_NAs,'country_p',country,province,remove = FALSE)
+data_without_NAs$country <- as.factor(data_without_NAs$country)
+data_without_NAs$above90<-as.factor(data_without_NAs$above90)
+levels(data_without_NAs$above90) <- c("Low", "High")
+data_without_NAs$title <- as.factor(data_without_NAs$title)
+data_without_NAs$variety<-as.factor(data_without_NAs$variety)
+data_without_NAs$winery<-as.factor(data_without_NAs$winery)
+data_without_NAs$country_p<-as.factor(data_without_NAs$country_p)
+data_without_NAs$province<-as.factor(data_without_NAs$province)
+```
+
+```{r boxplot for country}
+ggplot(data = data_without_NAs, aes(x = above90, y = price, fill = above90)) +
+geom_boxplot() +
+labs(x = "Points", y = "Price") +
+theme(legend.position = "none")
+```
+
+
+```{r country points stats}
+data_without_NAs %>%
+tabyl(country, above90) %>%
+adorn_percentages() %>%
+adorn_pct_formatting() %>%
+adorn_ns() # To show original counts
+```
+
+
+
+```{r country points graph}
+ggplot(data = data_without_NAs, aes(x = above90, group = country)) +
+geom_bar(aes(y = ..prop.., fill = country), stat = "count", position = "dodge") +
+labs(x = "Points", y = "Proportion")
+```
+
+
+```{r}
+view=aggregate(data_without_NAs$country_p, by=list(type=data_without_NAs$country),length)
+arrange(view,desc(x))
+```
+```{r}
+US=data_without_NAs[which(data_without_NAs$country=='US'),]
+Italy=data_without_NAs[which(data_without_NAs$country=='Italy'),]
+France=data_without_NAs[which(data_without_NAs$country=='France'),]
+```
+
+```{r}
+mod.US_p <- glm(above90 ~ country_p, data = US, family = binomial(link = "logit"))
+mod.US_p %>%
+summary()
 
 ```
 
 
 
 
+```{r}
+mod.Italy_p <- glm(above90 ~ country_p, data = Italy, family = binomial(link = "logit"))
+mod.Italy_p %>%
+summary()
+
+```
+
+```{r}
+mod.France_p <- glm(above90 ~ country_p, data = France, family = binomial(link = "logit"))
+mod.France_p %>%
+summary()
+
+```
+
+
+```{r US country_p points graph}
+ggplot(data = US, aes(x = above90, group = country_p)) +
+geom_bar(aes(y = ..prop.., fill = country_p), stat = "count", position = "dodge") +
+labs(x = "Points", y = "Proportion")
+```
+```{r}
+US.Low_area=filter(US,country_p=='US_Colorado'|country_p=='US_Idaho'|country_p=='US_Michigan'|country_p=='US_New Mexico'|country_p=='US_Virginia')
+US.High_area=filter(US,country_p!='US_Colorado'&country_p!='US_Idaho'&country_p!='US_Michigan'&country_p!='US_New Mexico'&country_p!='US_Virginia')
+```
+
+
+```{r}
+mod.US_high_p <- glm(above90 ~ country_p, data = US.High_area, family = binomial(link = "logit"))
+mod.US_high_p %>%
+summary()
+
+```
+```{r}
+US.California=filter(US,country_p=='US_California')
+US.nonCalifornia=filter(US,country_p!='US_California')
+US.California['California']=1
+US.nonCalifornia['California']=0
+US=bind_rows(US.California,US.nonCalifornia)
+```
+
+```{r}
+mod.US_Cali <- glm(above90 ~ California, data = US, family = binomial(link = "logit"))
+mod.US_Cali %>%
+summary()
+
+```
+```{r}
+France%>%
+  t=group_by(country_p)%>%
+summarize()
+```
+
+
+```{r}
+NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
+ NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
+ NorthAmerica['Area']='NorthAmerica'
+ 
+Italy=filter(data_without_NAs,country=='Italy')
+ Italy['Area']='Italy'
+ 
+ France=filter(data_without_NAs,country=='France')
+ France['Area']='France'
+ 
+ Spain=filter(data_without_NAs,country=='Spain')
+ Spain['Area']='Spain'
+ 
+ SouthAmerica=filter(data_without_NAs,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
+ SouthAmerica['Area']='SouthAmerica'
+ 
+ SouthGlobe=filter(data_without_NAs,country=='Australia'|country=='Chile'|country=='Argentina'	)
+ SouthGlobe['Area']='SouthGlobe'
+ 
+ WestEU=filter(data_without_NAs,country=='Austria'|country=='Germany'|country=='England'	)
+ WestEU['Area']='WestEU'
+ 
+ India=filter(data_without_NAs,country=='India')
+India['Area']='India'
+ 
+ EastEU=filter(data_without_NAs,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
+ EastEU['Area']='EastEU'
+ 
+ data_area=bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU,India)
+```
+
+
+```{r}
+data_area%>%
+   group_by(Area)%>% summarize(count=n(),sumhigh=sum(above90=='High'),sumlow=sum(above90=='Low'))%>%
+   arrange(desc(count))
+```
+
+
+```{r}
+   
+ mod.area <- glm(above90 ~ 0+Area, data = data_area, family = binomial(link = "logit"))
+ mod.area %>%
+ summary()
+```
+
+
+```{r}
+ggplot(data = data_area, aes(x = above90, group = Area)) +
+ geom_bar(aes(y = ..prop.., fill = Area), stat = "count", position = "dodge") +
+ labs(x = "Points", y = "Proportion")
+ data2=bind_rows(NorthAmerica,Italy)
+```
+
+```{r}
+data_area%>%
+   group_by(Area)%>%
+ summarize(count=n(),sumhigh=sum(above90=='High'),sumlow=sum(above90=='Low'))%>%
+  arrange(desc(count))
+```
+
+```{r}
+mod.area <- glm(above90 ~ 0+Area, data = data2, family = binomial(link = "logit"))
+ mod.area %>%
+ summary()
+```
 
 
 
 
+```{r}
+data_without_NAs%>%
+   group_by(country)%>%
+ summarize(count=n())
+ data_without_NAs%>%
+   group_by(country,variety)%>%
+summarize(count=n())
+```
+
+```{r}
+
+data_without_NAs%>%
+   
+   group_by(variety)%>%
+summarize(count=n(),sumhigh=sum(above90=='High'),sumlow=sum(above90=='Low'))%>%
+arrange(desc(count))
+
+```
+```{r}
+Pinot_Noir=filter(data_without_NAs,variety=='Pinot Noir')
+ Pinot_Noir%>%
+   group_by(country)%>%
+ summarize(count=n(),sumhigh=sum(above90=='High'),sumlow=sum(above90=='Low'))%>%
+   arrange(desc(count))
+
+```
+
+```{r}
+Pinot_Noir=filter(data_area,variety=='Pinot Noir')
+ Pinot_Noir%>%
+   group_by(Area)%>%
+ summarize(count=n(),sumhigh=sum(above90=='High'),sumlow=sum(above90=='Low'))%>%
+   arrange(desc(count))
+
+```
 
 
+```{r}
+Popular_variety=filter(data_area,variety=='Pinot Noir'|variety=='Chardonnay'|variety=='Cabernet Sauvignon'|variety=='Red Blend'|variety=='Riesling'|variety=='Sauvignon Blanc'|variety=='Syrah'|variety=='Bordeaux-style Red Blend')
+Popular_variety['Popular']='Popular'
+
+NonPopular_variety=filter(data_area,variety!='Pinot Noir'&variety!='Chardonnay'&variety!='Cabernet Sauvignon'&variety!='Red Blend'&variety!='Riesling'&variety!='Sauvignon Blanc'&variety!='Syrah'&variety!='Bordeaux-style Red Blend')
+NonPopular_variety['Popular']='NonPopular'
+
+data_area_pop=bind_rows(Popular_variety,NonPopular_variety)
+```
 
 
-
-
+```{r}
+mod.area <- glm(above90 ~ Popular, data = data_area_pop, family = binomial(link = "logit"))
+ mod.area %>%
+ summary()
+```
+```{r}
+mod.area <- glm(above90 ~ 0+Area, data = data_area_pop, family = binomial(link = "logit"))
+ mod.area %>%
+ summary()
+```
 
 
