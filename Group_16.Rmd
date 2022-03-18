@@ -110,6 +110,7 @@ labs(x = "Points", y = "Proportion")
 
 ```
 
+
 * country – Country of origin
 * points – The number of points awarded for the wine on a scale of 1-100 (although reviews are only posted for ratings 80 and above)
 * price – The cost for a bottle of wine
@@ -117,6 +118,18 @@ labs(x = "Points", y = "Proportion")
 * title – The title of the wine review
 * variety – The type of grape
 * winery – The winery that made the wine
+
+
+```{r country points graph 2}
+# this plot might be easier to view than the plot in the chunk above
+ggplot(data_without_NAs, aes(x = country, fill = above90)) +
+    geom_bar(position = "fill") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90)) +
+    labs(x = "Points", y = "Proportion")
+```
+
+
 
 * country – Categorical, could be influential
 * points – Numerical, response, split in to above and below 90 and become binary
