@@ -231,11 +231,60 @@ data_without_NAs %>%
   arrange(desc(count)) %>% 
   group_by(count) %>% 
   summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
+
+data_without_NAs %>% 
+  group_by(variety) %>% 
+  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  arrange(desc(count)) %>% 
+  group_by(count) %>% 
+  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low)) %>% 
+  group_by(count) %>% 
+
 ```
 
+
 ```{r}
-data_location %>% 
-  
+NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
+NorthAmerica['Area']='NorthAmerica'
+
+Italy=filter(data_without_NAs,country=='Italy')
+Italy['Area']='Italy'
+
+France=filter(data_without_NAs,country=='France')
+France['Area']='France'
+
+Spain=filter(data_without_NAs,country=='Spain')
+Spain['Area']='Spain'
+
+SouthAmerica=filter(data_without_NAs,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
+SouthAmerica['Area']='SouthAmerica'
+
+SouthGlobe=filter(data_without_NAs,country=='Australia'|country=='Chile'|country=='Argentina'	)
+SouthGlobe['Area']='SouthGloble'
+
+WestEU=filter(data_without_NAs,country=='Austria'|country=='Germany'|country=='England'	)
+WestEU['Area']='WestEU'
+
+India=filter(data_without_NAs,country=='India')
+India['Area']='India'
+
+EastEU=filter(data_without_NAs,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
+EastEU['Area']='EastEU'
+
+data_area=bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU,India)
 ```
+
+
+```{r}
+data_area %>%
+  group_by(Area) %>% 
+  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  arrange(desc(count))
+```
+```{r}
+summary(glm(above90 ~ 0 + Area, data = data_area, family = binomial(link = "logit")))
+```
+
+
 
 
