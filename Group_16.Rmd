@@ -35,8 +35,12 @@ library(janitor)
 ```
 
 ```{r load data}
-data <- read.csv("dataset16.csv",encoding = "UTF-8")
+#data <- read.csv("dataset16.csv")
+data<-load("2000data.RData")
 ```
+
+
+# Visualization
 
 ```{r data summary and drop NAs}
 skim(data)
@@ -45,32 +49,6 @@ data_without_NAs <- data %>%
   drop_na() %>% 
   mutate(above90 = ifelse(points > 90, 1, 0))
 skim(data_without_NAs)
-```
-
-```{r visual summary for numeric}
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(y = points)) +
-#   geom_boxplot()
-# 
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(y = price)) +
-#   geom_boxplot()
-#Many outliers
-
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(x = country, y = points)) +
-#   geom_boxplot()
-# 
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(x = country, y = price)) +
-#   geom_boxplot()
-
-data_without_NAs %>% 
-  ggplot(mapping = aes(x = above90, y = price, group = above90)) +
-  geom_boxplot()
-
-
-
 ```
 
 ```{r catigrical data}
@@ -101,24 +79,10 @@ adorn_pct_formatting() %>%
 adorn_ns() # To show original counts
 ```
 
-
-
-```{r country points graph}
-ggplot(data = data_without_NAs, aes(x = above90, group = country)) +
-geom_bar(aes(y = ..prop.., fill = country), stat = "count", position = "dodge") +
-labs(x = "Points", y = "Proportion")
-
+```{r}
+view=aggregate(data_without_NAs$country_p, by=list(type=data_without_NAs$country),length)
+arrange(view,desc(x))
 ```
-
-
-* country – Country of origin
-* points – The number of points awarded for the wine on a scale of 1-100 (although reviews are only posted for ratings 80 and above)
-* price – The cost for a bottle of wine
-* province – The province or state the wine is from
-* title – The title of the wine review
-* variety – The type of grape
-* winery – The winery that made the wine
-
 
 ```{r country points graph 2}
 # this plot might be easier to view than the plot in the chunk above
@@ -127,9 +91,47 @@ ggplot(data_without_NAs, aes(x = country, fill = above90)) +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90)) +
     labs(x = "Points", y = "Proportion")
+
 ```
 
 
+
+
+
+# Method
+## Area
+
+```{r}
+NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
+ NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
+ NorthAmerica['Area']='NorthAmerica'
+ 
+Italy=filter(data_without_NAs,country=='Italy')
+ Italy['Area']='Italy'
+ 
+ France=filter(data_without_NAs,country=='France')
+ France['Area']='France'
+ 
+ Spain=filter(data_without_NAs,country=='Spain')
+ Spain['Area']='Spain'
+ 
+ SouthAmerica=filter(data_without_NAs,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
+ SouthAmerica['Area']='SouthGlobe'
+ 
+ SouthGlobe=filter(data_without_NAs,country=='Australia'|country=='Chile'|country=='Argentina'	)
+ SouthGlobe['Area']='SouthAmerica'
+ 
+ WestEU=filter(data_without_NAs,country=='Austria'|country=='Germany'|country=='England'	)
+ WestEU['Area']='WestEU'
+ 
+ India=filter(data_without_NAs,country=='India')
+India['Area']='India'
+ 
+ EastEU=filter(data_without_NAs,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
+ EastEU['Area']='EastEU'
+ 
+ data_area=bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU,India)
+```
 
 * country – Categorical, could be influential
 * points – Numerical, response, split in to above and below 90 and become binary
@@ -141,163 +143,57 @@ ggplot(data_without_NAs, aes(x = country, fill = above90)) +
 
 
 
-```{r deduplication}
-data_without_NAs %>% 
-  group_by(title) %>% 
-  count() %>% 
-  arrange(desc(n))
-#title Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania) appear twice
-data_without_NAs %>% 
-  filter(title == 'Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania)')
-#two observation(331 and 1807) with same information, we drop it
-data_without_NAs <- data_without_NAs %>%
-  filter(X != 1807)
-```
 
 ```{r}
-glm(above90 ~ country + province + price + variety + winery, data = data_without_NAs, family = binomial(link = "logit"))
-```
-
-```{r}
-model_price <- glm(above90 ~ price, data = data_without_NAs, family = binomial(link = "logit"))
+model_price <- glm(above90 ~ price, data = data_area, family = binomial(link = "logit"))
 summary(model_price)
 ```
 
 
-```{r}
-model_price_country <- glm(above90 ~ price + country, data = data_without_NAs, family = binomial(link = "logit"))
-summary(model_price_country)
-```
-
-```{r explore country distribution}
-data_without_NAs %>% 
-  group_by(country) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-```
-
-```{r explore province distribution}
-data_without_NAs %>% 
-  group_by(province) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-```
-
 ```{r explore country-province distribution}
-data_without_NAs %>% 
+data_area %>% 
   group_by(country, province) %>% 
   summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
 ```
 
 
+
+## Wineries, varieties 
+
 ```{r winery}
-data_without_NAs %>% 
-  group_by(winery) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-
-data_without_NAs %>% 
+data_area %>% 
   group_by(winery) %>% 
   summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count)) %>% 
   group_by(count) %>% 
   summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
 ```
-```{r processed_winery}
-data_without_NAs %>% 
-  group_by(winery) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  mutate(processed_winery = if_else(count == 1, "small winerys", "large winerys")) %>% 
-  # as.character(winery)
-  group_by(processed_winery) %>% 
-  summarize(count = sum(count), High = sum(High), Low = sum(Low)) %>% 
-  arrange(desc(count)) 
-```
-
-
 
 ```{r}
-data_without_NAs %>% 
+data_area %>% 
   group_by(variety) %>% 
   summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
 
-data_without_NAs %>% 
+data_area %>% 
   group_by(variety) %>% 
   summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count)) %>% 
   group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
+  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))%>%
+  ggplot(aes(x=count ))+ geom_histogram()
 ```
 
-```{r}
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
-
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low)) %>% 
-  group_by(count) %>% 
-
-```
 
 
 ```{r}
-NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
-NorthAmerica['Area']='NorthAmerica'
-
-Italy=filter(data_without_NAs,country=='Italy')
-Italy['Area']='Italy'
-
-France=filter(data_without_NAs,country=='France')
-France['Area']='France'
-
-Spain=filter(data_without_NAs,country=='Spain')
-Spain['Area']='Spain'
-
-SouthAmerica=filter(data_without_NAs,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
-SouthAmerica['Area']='SouthAmerica'
-
-SouthGlobe=filter(data_without_NAs,country=='Australia'|country=='Chile'|country=='Argentina'	)
-SouthGlobe['Area']='SouthGloble'
-
-WestEU=filter(data_without_NAs,country=='Austria'|country=='Germany'|country=='England'	)
-WestEU['Area']='WestEU'
-
-India=filter(data_without_NAs,country=='India')
-India['Area']='India'
-
-EastEU=filter(data_without_NAs,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
-EastEU['Area']='EastEU'
-
-data_area=bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU,India)
+data_area=data_area %>% 
+  mutate(Popularity=ifelse(n() >= 100, "popular", "nonpopular")) %>%
+  group_by(winery) %>%
+  mutate(processed_winery=ifelse(n() == 1, "small wineries", "large wineries")) 
 ```
 
 
-```{r}
-data_area %>%
-  group_by(Area) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-```
-```{r}
-summary(glm(above90 ~ 0 + Area, data = data_area, family = binomial(link = "logit")))
-```
-
-
-
+## Year
 
