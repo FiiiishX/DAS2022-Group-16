@@ -10,4 +10,4 @@ Group 16
 |Presentation|Zhaohan Wang; Mingran Jia|3.25|
 
 # Main structure 
-
+![structure](https://github.com/FiiiishX/DAS2022-Group-16/blob/main/PPT1.png)
