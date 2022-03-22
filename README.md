@@ -3,11 +3,11 @@ Given a data set from the WineEnthusiast, analyise which properties of wine infl
 
 # Group information
 Group 16
-|  Work   | Member  | Timeline  |
-|  ----  | ----  |
-| Code the model and write the RMD  | Xiaoyu Xu; Mingran Jia; Ciara Richmond | 3.14-3.20
-| Silde  | Zhaohan Wang; Ciara Richmond | 3.20-3.24
-| Prentation  | Zhaohan Wang; Mingran Jia | 3.25 11:15
+|Work|Member|Timeline|
+----|---|-----|
+|Build model and write RMD file|Xiaoyu Xu; Mingran Jia; Ciara Richmond|3.14-3.20|
+|Write the Slide|Zhaohan Wang;Ciara Richmond|3.20-3.25|
+|Presentation|Zhaohan Wang; Mingran Jia|3.25|
 
 # Main structure 
 
