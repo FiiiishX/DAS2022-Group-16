@@ -1,5 +1,5 @@
 ---
-title: "Project 2"
+title: "Research on the main influencing factors of wine score"
 author: "Group 16"
 date: "2022/3/8"
 output:
@@ -32,97 +32,151 @@ library(sjPlot)
 library(stats)
 library(jtools)
 library(janitor)
+library(rms)
+library(MASS)
+library(rcompanion)
+library(fastDummies)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(ROCR)
 ```
 
 ```{r load data}
 data <- read.csv("dataset16.csv",encoding = "UTF-8")
 ```
 
+# introduction
+
+Based on a dataset from WineEnthusiast, we will analyze various attributes (origin, price, rating, etc.) of a bottle of wine appearing in the dataset and try to find out the variables that have an impact on whether a wine's rating is greater than 90. GLM models will be used
+to compare the influence of each feature on the rating score.
+
+# Data cleaning and EDA
+
+## Data summary and cleaning
+
+According to the requirements of the question, we need to create a new binary variable based on the score of the wine to indicate whether the score of a bottle of wine is greater than 90, which will be used as our response variable.
+
+From the title column, we can filter out the year of manufacture of the wine as a more useful feature
+
+
 ```{r data summary and drop NAs}
-skim(data)
-#price column have NAs with complete_rate 0.923, so we can simply drop rows with NAs.
-data_without_NAs <- data %>% 
-  drop_na() %>% 
-  mutate(above90 = ifelse(points > 90, 1, 0))
-skim(data_without_NAs)
+data %>% 
+  skim()
+
+# Create a new binary variable based on the score of the wine to indicate whether the score of a bottle of wine is greater than 90, which will be used as our response variable.
+# Filter out the year of manufacture of the wine from title column
+data_processed <- data %>% 
+  mutate(above90 = ifelse(points > 90, 1, 0)) %>%  
+  mutate(year = unlist(lapply(title,  function (x){str_extract(x, pattern = "\\d\\d\\d\\d")}))) 
+
+data_processed %>% 
+  skim()
 ```
 
-```{r visual summary for numeric}
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(y = points)) +
-#   geom_boxplot()
-# 
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(y = price)) +
-#   geom_boxplot()
-#Many outliers
+We noticed that the Country and Province column had a missing value, the Price column had 133 missing values, and the year column had 133 missing values, and we found that the title had a duplicate value, which could represent a duplicate piece of data. We found this duplicate and removed it from the dataset.
 
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(x = country, y = points)) +
-#   geom_boxplot()
-# 
-# data_without_NAs %>% 
-#   ggplot(mapping = aes(x = country, y = price)) +
-#   geom_boxplot()
+```{r deduplication}
+data_processed %>% 
+  group_by(title) %>% 
+  count() %>% 
+  arrange(desc(n))
+#title Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania) appear twice
 
-data_without_NAs %>% 
-  ggplot(mapping = aes(x = above90, y = price, group = above90)) +
+data_processed %>% 
+  filter(title == 'Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania)')
+
+#two observation(331 and 1807) with same information, we drop the 1807th observation
+data_processed <- data_processed %>%
+  filter(X != 1807)
+```
+
+## Categorical data to factor
+
+Since we plan to analysis with glm, we need transform our categorical variables to factor
+
+```{r process catigrical veriables}
+data_processed <- tidyr::unite(data_processed,'country_p',country,province,remove = FALSE)
+data_processed$country <- as.factor(data_processed$country)
+data_processed$above90 <- as.factor(data_processed$above90)
+levels(data_processed$above90) <- c("Low", "High")
+data_processed$title <- as.factor(data_processed$title)
+data_processed$variety <- as.factor(data_processed$variety)
+data_processed$winery <- as.factor(data_processed$winery)
+data_processed$country_p <- as.factor(data_processed$country_p)
+data_processed$province <- as.factor(data_processed$province)
+```
+
+## View data
+
+Here is a summary of our data:
+
+* country – Country of origin; Categorical, could be influential
+* points – The number of points awarded for the wine on a scale of 1-100 (although reviews are only posted for ratings 80 and above); Numerical, response, split in to above and below 90 and become binary
+* price – The cost for a bottle of wine; Numerical, could be influential
+* province – The province or state the wine is from
+* title – The title of the wine review; useless for model but we can filter year from it
+* variety – The type of grape; Categorical, could be influential
+* winery – The winery that made the wine; Categorical, could be a little bit influential, since have 1500+ unique value, maybe dropped or processed.
+
+### View data: general plots.
+
+We can see that the distribution of scores is not centered around 90, in the entire dataset there are more wines with scores below 90 than those above 90, which is a very important fact
+
+```{r Box plot for other variables v.s. points}
+data_processed %>%
+  ggplot(mapping = aes(y = points)) +
   geom_boxplot()
 
+data_processed %>%
+  ggplot(mapping = aes(y = price)) +
+  geom_boxplot()
+# Many outliers
 
+data_processed %>%
+  ggplot(mapping = aes(x = country, y = points)) +
+  geom_boxplot()
+#not readable
+
+data_processed %>%
+  ggplot(mapping = aes(x = country, y = price)) +
+  geom_boxplot()
+#not readable
+
+data_processed %>% 
+  ggplot(mapping = aes(x = above90, y = price, group = above90)) +
+  geom_boxplot()
+# Many outliers and significant difference
 
 ```
 
-```{r catigrical data}
-data_without_NAs=tidyr::unite(data_without_NAs,'country_p',country,province,remove = FALSE)
-data_without_NAs$country <- as.factor(data_without_NAs$country)
-data_without_NAs$above90<-as.factor(data_without_NAs$above90)
-levels(data_without_NAs$above90) <- c("Low", "High")
-data_without_NAs$title <- as.factor(data_without_NAs$title)
-data_without_NAs$variety<-as.factor(data_without_NAs$variety)
-data_without_NAs$winery<-as.factor(data_without_NAs$winery)
-data_without_NAs$country_p<-as.factor(data_without_NAs$country_p)
-data_without_NAs$province<-as.factor(data_without_NAs$province)
-```
 
-```{r boxplot for country}
-ggplot(data = data_without_NAs, aes(x = above90, y = price, fill = above90)) +
+### View data: price vs scores
+A box-plot is to show the relationship between price and scores.
+
+The result shows an obvious relationship between price and scores.
+```{r boxplot for price}
+ggplot(data = data_processed, aes(x = above90, y = price, fill = above90)) +
 geom_boxplot() +
 labs(x = "Points", y = "Price") +
 theme(legend.position = "none")
 ```
 
+### View data: country vs scores
+View countries and scores.
 
+The comparison bar plot shows an obvious relations between country and scores.
 ```{r country points stats}
-data_without_NAs %>%
+data_processed %>%
 tabyl(country, above90) %>%
 adorn_percentages() %>%
 adorn_pct_formatting() %>%
 adorn_ns() # To show original counts
 ```
 
-
-
-```{r country points graph}
-ggplot(data = data_without_NAs, aes(x = above90, group = country)) +
-geom_bar(aes(y = ..prop.., fill = country), stat = "count", position = "dodge") +
-labs(x = "Points", y = "Proportion")
-
-```
-
-
-* country – Country of origin
-* points – The number of points awarded for the wine on a scale of 1-100 (although reviews are only posted for ratings 80 and above)
-* price – The cost for a bottle of wine
-* province – The province or state the wine is from
-* title – The title of the wine review
-* variety – The type of grape
-* winery – The winery that made the wine
-
-
-```{r country points graph 2}
+```{r country v.s. points graph 2}
 # this plot might be easier to view than the plot in the chunk above
-ggplot(data_without_NAs, aes(x = country, fill = above90)) +
+ggplot(data_processed, aes(x = country, fill = above90)) +
     geom_bar(position = "fill") +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90)) +
@@ -130,172 +184,550 @@ ggplot(data_without_NAs, aes(x = country, fill = above90)) +
 ```
 
 
+### View data: Country and province distribution
 
-* country – Categorical, could be influential
-* points – Numerical, response, split in to above and below 90 and become binary
-* price – Numerical, could be influential
-* province – Categorical, could be influential
-* title – useless for model
-* variety – Categorical, could be influential
-* winery – Categorical, could be a little bit influential, since have 1500+ unique value, maybe dropped
-
-
-
-```{r deduplication}
-data_without_NAs %>% 
-  group_by(title) %>% 
-  count() %>% 
-  arrange(desc(n))
-#title Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania) appear twice
-data_without_NAs %>% 
-  filter(title == 'Cramele Recas 2014 Legendary Estate Series Cabernet Sauvignon (Romania)')
-#two observation(331 and 1807) with same information, we drop it
-data_without_NAs <- data_without_NAs %>%
-  filter(X != 1807)
-```
-
-```{r}
-glm(above90 ~ country + province + price + variety + winery, data = data_without_NAs, family = binomial(link = "logit"))
-```
-
-```{r}
-model_price <- glm(above90 ~ price, data = data_without_NAs, family = binomial(link = "logit"))
-summary(model_price)
-```
-
-
-```{r}
-model_price_country <- glm(above90 ~ price + country, data = data_without_NAs, family = binomial(link = "logit"))
-summary(model_price_country)
-```
-
+Specific data table to show the number of different countries, total number of rows of high scores, and low scores.
 ```{r explore country distribution}
-data_without_NAs %>% 
+data_processed %>% 
   group_by(country) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
 ```
 
 ```{r explore province distribution}
-data_without_NAs %>% 
+data_processed %>% 
   group_by(province) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
 ```
 
 ```{r explore country-province distribution}
-data_without_NAs %>% 
+data_processed %>% 
   group_by(country, province) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
 ```
 
+
+### View data: winery distribution
+
+Specific data table to show the number of wineries, total number of rows of high scores, and low scores.
 
 ```{r winery}
-data_without_NAs %>% 
+data_processed %>% 
   group_by(winery) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
-
-data_without_NAs %>% 
-  group_by(winery) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count)) %>% 
   group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
+  dplyr::summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
 ```
+We find the winery only appears once is of large amount. 
+
+Label them 'small wineries' and 'large wineries' to see the distribution.
 ```{r processed_winery}
-data_without_NAs %>% 
+data_processed %>% 
   group_by(winery) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count)) %>% 
-  mutate(processed_winery = if_else(count == 1, "small winerys", "large winerys")) %>% 
+  mutate(processed_winery = if_else(count == 1, "small wineries", "large wineries")) %>% 
   # as.character(winery)
   group_by(processed_winery) %>% 
-  summarize(count = sum(count), High = sum(High), Low = sum(Low)) %>% 
+  dplyr::summarize(count = sum(count), High = sum(High), Low = sum(Low)) %>% 
   arrange(desc(count)) 
 ```
 
 
-
-```{r}
-data_without_NAs %>% 
+### View data: variety distribution
+The hist graph shows the number of varieties of wines are distributed with slant and gaps. 
+```{r variety distribution}
+data_processed %>% 
   group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  dplyr::summarize(Count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
+  arrange(desc(Count)) %>% 
+  ggplot(mapping = aes(x = Count,label=..count..)) +
+  geom_histogram(binwidth=20,color="white",breaks = seq(0, 210, 20)) +
+  geom_text(stat="bin", size=2,vjust=0,breaks = seq(0, 210, 20),position="stack") +
+  labs(x = 'Number of wines' , y = 'Number of varieties')
+```
+
+
+# Method to group levels
+
+Since we have too many levels in categories of country, province, winery and variety, methods of division are applied below.
+
+## Group area
+
+Since the countries have included the information for origin of wines, we will only take countries into consideration. The separated origins are called 'Area'.
+
+The area is divided by geographical region.
+
+NorthAmerica: 'US', 'Canada'
+
+Italy, France, Spain are not combined with any other countries because they have many enough wines.
+
+India is droped because it only has one row.
+
+SouthGlobe: 'Portugal','New Zealand','South Africa'
+
+SouthAmerica: 'Australia', 'Chile', 'Argentina'	
+
+WestEU: 'Austria', 'Germany', 'England'	
+
+EastEU: 'Greece', 'Romania', 'Croatia', 'Israel', 'Bulgaria', 'Georgia', 'Slovenia', 'Turkey', 'Uruguay', 'Czech Republic', 'Hungary'
+
+```{r group country by area}
+NorthAmerica=filter(data_processed,country=='US'|country=='Canada')
+ NorthAmerica=filter(data_processed,country=='US'|country=='Canada')
+ NorthAmerica['Area']='NorthAmerica'
+ 
+Italy=filter(data_processed,country=='Italy')
+ Italy['Area']='Italy'
+ 
+ France=filter(data_processed,country=='France')
+ France['Area']='France'
+ 
+ Spain=filter(data_processed,country=='Spain')
+ Spain['Area']='Spain'
+ 
+ SouthGlobe=filter(data_processed,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
+ SouthGlobe['Area']='SouthGlobe'
+ 
+ SouthAmerica=filter(data_processed,country=='Australia'|country=='Chile'|country=='Argentina'	)
+ SouthAmerica['Area']='SouthAmerica'
+ 
+ WestEU=filter(data_processed,country=='Austria'|country=='Germany'|country=='England'	)
+ WestEU['Area']='WestEU'
+ 
+# India=filter(data_processed,country=='India')
+#India['Area']='India'
+ 
+ EastEU=filter(data_processed,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
+ EastEU['Area']='EastEU'
+ 
+data_area <- bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU)
+```
+
+## Group Wineries
+
+Wineries are separated by the number of wines produced by themselves. 
+
+Large wineries: wineries of more than 1 wines.
+
+Small wineries: wineries of 1 wines.
+
+```{r group wineries by size}
+data_area=data_area %>% 
+  group_by(winery) %>%
+  mutate(processed_winery=ifelse(n() == 1, "small_wineries", "large_wineries")) 
+```
+
+
+## Group varieties
+
+The variety of a wine is divided by whether it is in common_8_wine sets.
+
+Te source is on https://winefolly.com/deep-dive/common-types-of-wine/
+
+common_8: 'Cabernet Sauvignon', 'Syrah', 'Zinfandel', 'Pinot Noir', 'Chardonnay', 'Sauvignon Blanc', 'Pinot Gris', 'Riesling'.
+
+not_common_8: others.
+```{r group varieties by common or not}
+common_8_wine <- c('Cabernet Sauvignon', 'Syrah', 'Zinfandel', 'Pinot Noir', 'Chardonnay', 'Sauvignon Blanc', 'Pinot Gris', 'Riesling')
+data_area <- data_area %>% 
+  mutate(common_8_or_not = ifelse(variety %in% common_8_wine, 'common_8', 'not_common_8'))
+
+# check the distribution after grouping
+data_area %>% 
+  group_by(common_8_or_not) %>% 
+  dplyr::summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
   arrange(desc(count))
-
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
 ```
 
-```{r}
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
+# Formal analysis with glm
 
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low))
+We will build many logistic regression model in this section
 
-data_without_NAs %>% 
-  group_by(variety) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count)) %>% 
-  group_by(count) %>% 
-  summarize(sumcount = sum(count), High = sum(High), Low = sum(Low)) %>% 
-  group_by(count) %>% 
+## Area models
 
+In this section we will try to fit model using area v.s. response
+
+We also examined the effect of each region on the response separately relative to the others, for example, compare with non-EastEU region, the wine produced in EastEU may have less probability to be mark above 90 points.
+
+```{r model for every area}
+model_Area <- glm(above90 ~   Area  , data = data_area, family = binomial(link = "logit"))
+
+model_Area %>% 
+  summary()
+```
+
+```{r model_Area_EastEU}
+model_Area_EastEU <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'EastEU', 'EastEU', 'nonEastEU')) %>% 
+  glm(above90 ~ 0+temp_Area , data = ., family = binomial(link = "logit"))
+
+model_Area_EastEU %>% 
+  summary()
+```
+
+```{r model_Area_France}
+model_Area_France <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'France', 'France', 'nonFrance')) %>% 
+  glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_France %>% 
+  summary()
+```
+
+```{r model_Area_Italy}
+model_Area_Italy <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'Italy', 'Italy', 'nonItaly')) %>% 
+  glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_Italy %>% 
+  summary()
+```
+
+```{r model_Area_Spain}
+model_Area_Spain <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'Spain', 'Spain', 'nonSpain')) %>% 
+  glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_Spain %>% 
+  summary()
+```
+
+```{r model_Area_SouthGloble}
+model_Area_SouthGloble <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'SouthGlobe', 'SouthGlobe', 'nonSouthGlobe')) %>% 
+  glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_SouthGloble %>% 
+  summary()
+```
+
+```{r model_Area_WestEU}
+model_Area_WestEU <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'WestEU', 'WestEU', 'nonWestEU')) %>% 
+  glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_WestEU %>% 
+  summary()
+```
+
+```{r model_Area_NorthAmerica}
+model_Area_NorthAmerica <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'NorthAmerica', 'NorthAmerica', 'nonNorthAmerica')) %>% 
+  glm(above90 ~ temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_NorthAmerica %>% 
+  summary()
+```
+
+```{r model_Area_SouthAmerica}
+model_Area_SouthAmerica <- data_area %>% 
+  mutate(temp_Area = ifelse(Area == 'SouthAmerica', 'SouthAmerica', 'nonSouthAmerica')) %>% 
+  glm(above90 ~ temp_Area, data = ., family = binomial(link = "logit"))
+
+model_Area_SouthAmerica %>% 
+  summary()
 ```
 
 
-```{r}
-NorthAmerica=filter(data_without_NAs,country=='US'|country=='Canada')
-NorthAmerica['Area']='NorthAmerica'
+## Year models
 
-Italy=filter(data_without_NAs,country=='Italy')
-Italy['Area']='Italy'
+In this section, we check how year v.s. response 
 
-France=filter(data_without_NAs,country=='France')
-France['Area']='France'
 
-Spain=filter(data_without_NAs,country=='Spain')
-Spain['Area']='Spain'
+```{r model_year}
+model_year <- data_area %>% 
+  drop_na(year) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  glm(above90 ~  year  , data = ., family = binomial(link = "logit"))
 
-SouthAmerica=filter(data_without_NAs,country=='Portugal'|country=='New Zealand'|country=='South Africa'	)
-SouthAmerica['Area']='SouthAmerica'
+model_year %>% 
+  summary()
+```
 
-SouthGlobe=filter(data_without_NAs,country=='Australia'|country=='Chile'|country=='Argentina'	)
-SouthGlobe['Area']='SouthGloble'
+```{r model_log_year}
+model_log_year <- data_area %>% 
+  drop_na(year) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  mutate(log_year = log(year)) %>% 
+  glm(above90 ~  log_year  , data = ., family = binomial(link = "logit"))
 
-WestEU=filter(data_without_NAs,country=='Austria'|country=='Germany'|country=='England'	)
-WestEU['Area']='WestEU'
+model_log_year %>% 
+  summary()
+```
 
-India=filter(data_without_NAs,country=='India')
-India['Area']='India'
+we find out the regression coefficients in both case is not significance
 
-EastEU=filter(data_without_NAs,country=='Greece'|country=='Romania'|country=='Croatia'|country=='Israel'|country=='Bulgaria'|country=='Georgia'|country=='Slovenia'|country=='Turkey'|country=='Uruguay'|country=='Czech Republic'|country=='Hungary')
-EastEU['Area']='EastEU'
+## Variety model
 
-data_area=bind_rows(NorthAmerica,Italy,France,Spain,SouthAmerica,SouthGlobe,WestEU,EastEU,India)
+In this section, we check how variety v.s. response
+
+```{r model_variety_ori}
+# this is a test model using the original 171 varieties, it will produce 171 coefficients
+model_variety_ori <- data_area %>% 
+  glm(above90 ~ variety  , data = ., family = binomial(link = "logit"))
+
+# model_variety_ori %>% 
+#   summary()
 ```
 
 
-```{r}
-data_area %>%
-  group_by(Area) %>% 
-  summarize(count = n(), High = sum(above90 == 'High'), Low = sum(above90 == 'Low')) %>% 
-  arrange(desc(count))
+```{r model_variety}
+model_variety <- data_area %>% 
+  glm(above90 ~ common_8_or_not  , data = ., family = binomial(link = "logit"))
+
+model_variety %>% 
+  summary()
 ```
-```{r}
-summary(glm(above90 ~ 0 + Area, data = data_area, family = binomial(link = "logit")))
+
+We can see that if other factors are not considered, the probability of scoring greater than 90 for 8 common wines is higher than other wines
+
+## Price model
+
+In this section we study the effect of wine price on ratings
+
+```{r model_price}
+model_price <- data_area %>% 
+  drop_na(price) %>% 
+  glm(above90 ~ price  , data = ., family = binomial(link = "logit"))
+
+model_price %>% 
+  summary()
+```
+
+since we have some wines with very high price, we perform a log transform on price
+
+```{r model_log_price}
+model_log_price <- data_area %>% 
+  drop_na(price) %>% 
+  mutate(log_price = log(price)) %>% 
+  glm(above90 ~ log_price  , data = ., family = binomial(link = "logit"))
+
+model_log_price %>% 
+  summary()
+```
+
+As the price of a wine increases, so does the probability of it being rated 90+
+
+
+## Winery model
+
+Now we examine the effect of winery size on a wine's score point
+
+```{r model_winery}
+model_winery <- data_area %>% 
+  drop_na(processed_winery) %>% 
+  glm(above90 ~ processed_winery  , data = ., family = binomial(link = "logit"))
+
+model_winery %>% 
+  summary()
+```
+
+Larger wineries are more likely to score above 90 than smaller wineries.
+
+## Full model
+
+Now we fit a full model for all variables
+
+```{r full model}
+data_full <- data_area %>% 
+  drop_na() %>% 
+  mutate(year = as.numeric(year)) %>% 
+  mutate(log_price = log(price))  
+  
+model_full <- glm(above90 ~ log_price + year + processed_winery + common_8_or_not + Area , data = data_full, family = binomial(link = "logit"))
+
+model_full %>%
+  summary()
+```
+
+The coefficients of year, price, and winery are significant, but the coefficients of variety and some regions are not significant. We will use stepwise regression to continue the study.
+
+```{r stepwise regression}
+stepAIC(model_full,direction="both")
+```
+
+According to the AIC criterion, we discard variety and continue modeling with the remaining four variables.
+
+```{r model_without_variety}
+model_without_variety <- glm(above90 ~ log_price + year + processed_winery + Area , data = data_full, family = binomial(link = "logit"))
+
+model_without_variety %>%
+  summary()
+```
+
+The coefficient for year is no longer significant, we try to remove the year and continue modeling
+
+```{r model_without_variety_year}
+# same as finally for now
+model_without_variety_year <- glm(above90 ~ log_price + processed_winery + Area , data = data_full, family = binomial(link = "logit"))
+
+model_without_variety_year %>%
+  summary()
+```
+
+If we start our full model by drop year since it not significant when modeling year v.s. response, we get a same model dropping year and variety 
+
+```{r model_without_year}
+model_without_year <- glm(formula = above90 ~ log_price + common_8_or_not + processed_winery +  Area, 
+    family = binomial(link = "logit"), data = data_full)
+
+model_without_year %>% 
+  summary()
+
+step(model_without_year)
+```
+
+Now we achieve our finally model.
+
+```{r model_final}
+model_final <- glm(formula = above90 ~ log_price + processed_winery +  Area, 
+    family = binomial(link = "logit"), data = data_full)
+
+model_final %>% 
+  summary()
+```
+
+We can group those that do not belong to Western European countries and get some summative pictures
+
+```{r model_final_EU}
+model_final_EU <- data_full %>% 
+  mutate(temp_Area = ifelse(Area == 'WestEU', 'WestEU', 'nonWestEU')) %>% 
+  glm(above90 ~ temp_Area + processed_winery + log_price  , data = ., family = binomial(link = "logit"))
+```
+
+
+```{r model_final_EU plots}
+plot_model(model_final_EU,type="pred",terms=c("log_price", "temp_Area", "processed_winery"))
+
+plot_model(model_final_EU,type="pred",terms=c("log_price", "temp_Area"))
+
+plot_model(model_final_EU, show.values=TRUE)
+
+# plot_model(model_final, show.values=TRUE)
+```
+
+
+# Model checking and diagnostics for logistic regression
+
+## deviance
+
+```{r check deviance}
+(2110.3-1511.4) > qchisq(0.95, df=1791-1782)
+```
+
+The final model is significantly different from the null model.
+
+## Hosmer-Lemeshow goodness 
+
+```{r Hosmer-Lemeshow goodness, warning=FALSE}
+source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
+for (i in 6:10){
+  print(HLTest(model_final, g=i))
+}
+```
+
+At different values of g, our model sometimes shows lack of fit, which means that our model may not fit the response variable well
+
+## Multicollinearity
+
+Variance inflation factor (VIF) is an effective method to check for direct multicollinearity of variables, but VIF is designed for numerical variables and cannot be used for categorical variables, and we initially tried manually generating dummy variables from categorical variables to calculate VIF. But then we found that the VIF function in the 'car' package contains GVIF, which can be used to handle categorical variables
+
+```{r car vif}
+car::vif(model_full)
+
+car::vif(model_final)
+```
+
+From the results, there is no multicollinearity among the variables in our full and final models.
+
+```{r VIF using dummy variables}
+# data_dummy <- dummy_cols(data_full, select_columns = c('processed_winery', 'Area', 'common_8_or_not')) %>% 
+#   dplyr::select(-c('processed_winery_small wineries', 'common_8_or_not_not_common_8', 'Area_WestEU'))
+# 
+# model_dummy <- data_dummy[1:1792 ,c(10, 15,16,18:26)] %>% 
+#   glm(above90 ~ ., data = .,family = binomial(link = "logit"))
+# 
+# model_dummy %>% 
+#   summary()
+# 
+# vif(model_dummy)
+# 
+# model_dummy_final <- data_dummy[1:1792 ,c(10, 15,18:25)] %>% 
+#   glm(above90 ~ ., data = .,family = binomial(link = "logit"))
+# 
+# model_dummy_final %>% 
+#   summary()
+# 
+# vif(model_dummy_final)
+# 
+# 
+# model_dummy_without_NorthAmerica <- data_dummy[1:1792 ,c(10, 15,18:25)] %>%
+#   filter(Area_NorthAmerica != 1) %>% 
+#   dplyr::select(-'Area_NorthAmerica') %>% 
+#   glm(above90 ~ ., data = .,family = binomial(link = "logit"))
+# 
+# model_dummy_without_NorthAmerica %>% 
+#   summary()
+# 
+# vif(model_dummy_without_NorthAmerica)
+```
+
+## Classification ability
+
+Although our main question is to investigate what is the variable that affects whether the score is greater than 90, because of our logistic regression model for a binomial response variable, our model can be used as a classifier to judge a given information Whether the wine score is greater than 90. So we use the receiver operating characteristic (ROC) curve and area under the ROC curve (AUC) value to assess the predictive power of our model
+
+```{r ROC}
+predict <- predict(model_final, data_full, type="response")
+above90labels <- ifelse(data_full$above90 == "High", 1, 0)
+score <- prediction(predict,above90labels)
+perf <- performance(score,"tpr","fpr")
+auc <- performance(score,"auc")
+perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
+p4<- ggplot(perfd, aes(x= x, y=y)) + 
+  geom_line() +
+  xlab("False positive rate") +
+  ylab("True positive rate") +
+  ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
+```
+
+The area under the curve is about 0.85, which is reasonable considering that we make many grouping on our variables. 
+The effect of classification is acceptable and not bad.
+
+
+# Conclusion
+
+After the overall analysis, we can get the conclusion. The wines’ points are influenced by price, wineries and areas. Here, the probabilities of getting high score in west Europe is significantly different from other areas. Wines’ varieties can affect the score if we consider it separately, however, combining with other factors, varieties are not so obvious to influence the scores.
+
+# Future work
+
+## Grouping method
+
+We have grouped categorical variables with too many levels when processing the data. The method of grouping is relatively subjective. Although we have considered many grouping methods, and we show the most reasonable grouping method here, there may be more Good grouping we didn't consider, it might be helpful to know more background about wine.
+
+## Model selection
+
+We selected models based on AIC criteria only, BIC and some other criteria should probably be considered.
+
+## Other way to divied wine's point
+
+We count wines with a score greater than 90 as high-quality wines and those below 90 as low-quality wines, but in fact this is a very subjective segmentation, and we should use a more reasonable segmentation to distinguish the quality of the wine.
+
+We divide the wine score into whether it is greater than 90, but in fact we have a numerical score for the wine, maybe we can try a linear model
+
+# Table plots for PPT
+
+```{r plot for regression tables for PPT}
+tab_model(model_final, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_Area, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_price, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_variety, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_winery, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_year, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
+tab_model(model_without_year, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE, show.aic = TRUE)
 ```
 
 
