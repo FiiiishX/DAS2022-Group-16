@@ -11,3 +11,7 @@ Group 16
 
 # Main structure 
 ![structure](https://github.com/FiiiishX/DAS2022-Group-16/blob/main/PPT2.png)
+
+# Branch introduction
+The main branch always maintain the correct version. If we want to add some new chunck of our code, please create a new branch from main. When a member want to merge the in the main branch, please select at least to member of group to review and comment your code
+
