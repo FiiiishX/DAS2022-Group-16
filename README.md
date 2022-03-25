@@ -23,3 +23,7 @@ Our response variable is above 90 points or not, this is the binary response.So,
 5. Y~. and use stepwise regression to select the variable
 6. the final model is![image](https://user-images.githubusercontent.com/68211426/160033731-f8401f99-ce18-4779-8b44-0ac113a3d088.png)
 
+## Document description
+- Group_16_Analysis.Rmd is our code of the project
+- PPT2 is the picture which use in read.me
+- dataset16.csv is the data set of our project
