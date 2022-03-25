@@ -581,7 +581,30 @@ model_without_year %>%
 step(model_without_year)
 ```
 
-Now we achieve our finally model.
+Now we achieve our finally model:
+
+$$
+\widehat{above90} = \widehat{\beta_0} +\widehat{\beta_1} \cdot log(x_{price}) + \widehat{\beta_2} \cdot \mathbb{I}_{winery}(x_{winery})+ \sum_{i=3}^{9}\widehat{\beta_i} \cdot \mathbb{I}_{Area_i}(x_{Area_i}) 
+$$
+where:
+$$
+\mathbb{I}_{\mbox{winery}}(x_{winery})=\left\{
+\begin{array}{ll}
+1 ~~~ \mbox{if winery of} ~ x \mbox{th observation is small winery},\\
+0 ~~~ \mbox{Otherwise}.\\
+\end{array}
+\right.
+$$
+
+$$
+\mathbb{I}_{{Area_i}}(x_{Area_i})=\left\{
+\begin{array}{ll}
+1 ~~~ \mbox{if area of} ~ x \mbox{th observation is ith area},\\
+0 ~~~ \mbox{Otherwise}.\\
+\end{array}
+\right.
+$$
+
 
 ```{r model_final}
 model_final <- glm(formula = above90 ~ log_price + processed_winery +  Area, 
@@ -613,7 +636,7 @@ plot_model(model_final_EU, show.values=TRUE)
 
 # Model checking and diagnostics for logistic regression
 
-## deviance
+## Deviance
 
 ```{r check deviance}
 (2110.3-1511.4) > qchisq(0.95, df=1791-1782)
@@ -687,11 +710,13 @@ score <- prediction(predict,above90labels)
 perf <- performance(score,"tpr","fpr")
 auc <- performance(score,"auc")
 perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
-p4<- ggplot(perfd, aes(x= x, y=y)) + 
+ROCplot<- ggplot(perfd, aes(x= x, y=y)) + 
   geom_line() +
   xlab("False positive rate") +
   ylab("True positive rate") +
-  ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
+  ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))+
+  theme(title=element_text(size=15),axis.text.x = element_text(size=15),axis.text.y = element_text(size=15),legend.text = element_text(size=15))
+ROCplot
 ```
 
 The area under the curve is about 0.85, which is reasonable considering that we make many grouping on our variables. 
@@ -703,6 +728,14 @@ The effect of classification is acceptable and not bad.
 After the overall analysis, we can get the conclusion. The wines’ points are influenced by price, wineries and areas. Here, the probabilities of getting high score in west Europe is significantly different from other areas. Wines’ varieties can affect the score if we consider it separately, however, combining with other factors, varieties are not so obvious to influence the scores.
 
 # Future work
+
+## classification tree
+
+In the previous model chapter we used our logistic regression model as a classification algorithm and plotted the ROC to examine the classification effect. Going a step further, we can try to use the classification tree algorithm to obtain a classification model to meet possible classification needs. Of course, when building the tree we need to first segment our numerical variables
+
+## Analysis at a finer geographic level
+
+We deduce the origin of wine by country and province labels in the dataset, in fact we are doing research almost at the continent level. For some regions with vast areas or large differences in production areas, a more detailed division of production areas will be more reasonable.
 
 ## Grouping method
 
@@ -720,6 +753,32 @@ We divide the wine score into whether it is greater than 90, but in fact we have
 
 # Table plots for PPT
 
+```{r model_final_changed_area_base}
+
+data_full$Area_based_on_WestEU <- fct_relevel(data_full$Area, c('WestEU','NorthAmerica','Italy','France','Spain','SouthAmerica','SouthGlobe','EastEU'))
+
+model_final_changed_area_base <- glm(formula = above90 ~ log_price + processed_winery +  Area_based_on_WestEU, 
+    family = binomial(link = "logit"), data = data_full)
+
+model_final_changed_area_base %>% 
+  summary()
+
+```
+
+
+```{r model_area_changed_area_base}
+
+temp_data<-data_full
+temp_data$Area <- fct_relevel(temp_data$Area, c('WestEU','NorthAmerica','Italy','France','Spain','SouthAmerica','SouthGlobe','EastEU'))
+
+model_area_changed_area_base <- glm(formula = above90 ~ Area, 
+    family = binomial(link = "logit"), data = temp_data)
+
+model_area_changed_area_base %>% 
+  summary()
+
+```
+
 ```{r plot for regression tables for PPT}
 tab_model(model_final, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
 tab_model(model_Area, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
@@ -728,6 +787,8 @@ tab_model(model_variety, digits = 5,transform = NULL, show.r2 = FALSE, show.dev 
 tab_model(model_winery, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
 tab_model(model_year, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
 tab_model(model_without_year, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE, show.aic = TRUE)
+tab_model(model_final_changed_area_base, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE, show.aic = TRUE)
+tab_model(model_area_changed_area_base, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
 ```
 
 
