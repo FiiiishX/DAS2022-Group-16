@@ -43,8 +43,10 @@ library(ROCR)
 ```
 
 ```{r load data}
-data <- read.csv("dataset16.csv",encoding = "UTF-8")
+#data <- read.csv("dataset16.csv")
+data<-load("2000data.RData")
 ```
+
 
 # introduction
 
@@ -60,6 +62,7 @@ According to the requirements of the question, we need to create a new binary va
 From the title column, we can filter out the year of manufacture of the wine as a more useful feature
 
 
+
 ```{r data summary and drop NAs}
 data %>% 
   skim()
@@ -73,6 +76,7 @@ data_processed <- data %>%
 data_processed %>% 
   skim()
 ```
+
 
 We noticed that the Country and Province column had a missing value, the Price column had 133 missing values, and the year column had 133 missing values, and we found that the title had a duplicate value, which could represent a duplicate piece of data. We found this duplicate and removed it from the dataset.
 
@@ -123,6 +127,7 @@ Here is a summary of our data:
 
 We can see that the distribution of scores is not centered around 90, in the entire dataset there are more wines with scores below 90 than those above 90, which is a very important fact
 
+
 ```{r Box plot for other variables v.s. points}
 data_processed %>%
   ggplot(mapping = aes(y = points)) +
@@ -132,6 +137,7 @@ data_processed %>%
   ggplot(mapping = aes(y = price)) +
   geom_boxplot()
 # Many outliers
+
 
 data_processed %>%
   ggplot(mapping = aes(x = country, y = points)) +
@@ -147,7 +153,6 @@ data_processed %>%
   ggplot(mapping = aes(x = above90, y = price, group = above90)) +
   geom_boxplot()
 # Many outliers and significant difference
-
 ```
 
 
@@ -164,6 +169,7 @@ theme(legend.position = "none")
 
 ### View data: country vs scores
 View countries and scores.
+
 
 The comparison bar plot shows an obvious relations between country and scores.
 ```{r country points stats}
@@ -209,6 +215,7 @@ data_processed %>%
 ```
 
 
+
 ### View data: winery distribution
 
 Specific data table to show the number of wineries, total number of rows of high scores, and low scores.
@@ -235,6 +242,9 @@ data_processed %>%
   dplyr::summarize(count = sum(count), High = sum(High), Low = sum(Low)) %>% 
   arrange(desc(count)) 
 ```
+
+
+## Wineries, varieties 
 
 
 ### View data: variety distribution
@@ -343,6 +353,7 @@ data_area %>%
   arrange(desc(count))
 ```
 
+
 # Formal analysis with glm
 
 We will build many logistic regression model in this section
@@ -367,12 +378,14 @@ model_Area_EastEU <- data_area %>%
 
 model_Area_EastEU %>% 
   summary()
+
 ```
 
 ```{r model_Area_France}
 model_Area_France <- data_area %>% 
   mutate(temp_Area = ifelse(Area == 'France', 'France', 'nonFrance')) %>% 
   glm(above90 ~  temp_Area, data = ., family = binomial(link = "logit"))
+
 
 model_Area_France %>% 
   summary()
@@ -790,7 +803,6 @@ tab_model(model_without_year, digits = 5,transform = NULL, show.r2 = FALSE, show
 tab_model(model_final_changed_area_base, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE, show.aic = TRUE)
 tab_model(model_area_changed_area_base, digits = 5,transform = NULL, show.r2 = FALSE, show.dev = TRUE)
 ```
-
 
 
 
