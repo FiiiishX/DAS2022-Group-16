@@ -12,7 +12,8 @@ Group 16
 |Presentation|Zhaohan Wang; Mingran Jia|3.25|
 
 ## Main structure 
-![structure](https://github.com/FiiiishX/DAS2022-Group-16/blob/main/PPT2.png)
+
+![image](https://user-images.githubusercontent.com/68211426/160034727-cf2e4532-d77d-4617-b3df-290852048026.png)
 
 ## Model Building
 Our response variable is above 90 points or not, this is the binary response.So, we can build the following model. 
@@ -21,7 +22,8 @@ Our response variable is above 90 points or not, this is the binary response.So,
 3. Y~ variety to determine whether and how the type of grape influence the response
 4. Y~ winery to determine whether and how the winery influence the response
 5. Y~. and use stepwise regression to select the variable
-6. the final model is![image](https://user-images.githubusercontent.com/68211426/160033731-f8401f99-ce18-4779-8b44-0ac113a3d088.png)
+6. the final model is![image](https://user-images.githubusercontent.com/68211426/160033731-f8401f99-ce18-4779-8b44-0ac113a3d088.png)![image](https://user-images.githubusercontent.com/68211426/160034404-518437e6-a928-469e-9ffa-be34736a5a82.png)
+
 
 ## Document description
 - Group_16_Analysis.Rmd is our code of the project
