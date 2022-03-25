@@ -27,5 +27,4 @@ Our response variable is above 90 points or not, this is the binary response.So,
 
 ## Document description
 - Group_16_Analysis.Rmd is our code of the project
-- PPT2 is the picture which use in read.me
 - dataset16.csv is the data set of our project
